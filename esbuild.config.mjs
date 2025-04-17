@@ -37,7 +37,9 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-    outfile: "C:\\perlite-sync-test\\.obsidian\\plugins\\PerliteSync\\main.js",
+	//    outfile: "C:\\perlite-sync-test\\.obsidian\\plugins\\PerliteSync\\main.js",
+
+    outfile: "/Users/jethrozz/Documents/obsidian/jethrozz/.obsidian/plugins/PerliteSync/main.js",
 	minify: prod,
 	plugins: [{
 		name: "copy-assets",
@@ -47,7 +49,8 @@ const context = await esbuild.context({
 				const path = await import("path");
 				
 				// 确保目录存在
-                const outDir = "C:\\perlite-sync-test\\.obsidian\\plugins\\PerliteSync";
+				//const outDir = "C:\\perlite-sync-test\\.obsidian\\plugins\\PerliteSync";
+                const outDir = "/Users/jethrozz/Documents/obsidian/jethrozz/.obsidian/plugins/PerliteSync";
 				if (!fs.existsSync(outDir)) {
 					fs.mkdirSync(outDir, { recursive: true });
 				}

@@ -1,6 +1,7 @@
 import { PartialMessage } from './../node_modules/esbuild/lib/main.d';
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { MnemonicWallet } from './mnemonic-wallet';
+import * as dotenv from 'dotenv';
 // Remember to rename these classes and interfaces!
 
 interface PerliteSyncSettings {
@@ -18,6 +19,7 @@ export default class PerliteSyncPlugin extends Plugin {
     mnemonicWallet: MnemonicWallet;
     async onload() {
         await this.loadSettings();
+        dotenv.config();
         try {
             this.mnemonicWallet = new MnemonicWallet(this.settings.passphrase);
             console.log(this.mnemonicWallet.getAddress());
@@ -111,6 +113,10 @@ export default class PerliteSyncPlugin extends Plugin {
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        
+        if (!this.settings.passphrase && process.env.IS_TEST) {
+            this.settings.passphrase = process.env.PASSPHRASE || "";
+        }
     }
 
     async saveSettings() {
@@ -154,6 +160,13 @@ class PerliteSyncSettingTab extends PluginSettingTab {
                 .setPlaceholder('Enter your passphrase')
                 .setValue(this.plugin.settings.passphrase)
                 .onChange(async (value) => {
+                    try {
+                        if(value != "" && this.plugin.settings.passphrase != value) {
+                            this.plugin.mnemonicWallet = new MnemonicWallet(value);
+                        }
+                    } catch (error) {
+                        console.error("init mnemonic wallet failed");
+                    }
                     this.plugin.settings.passphrase = value;
                     await this.plugin.saveSettings();
                 }));

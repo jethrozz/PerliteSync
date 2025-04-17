@@ -8,23 +8,24 @@
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
-	"keywords": [],
-	"author": "",
-	"license": "MIT",
-    "dependencies": {
-        "@mysten/bcs": "^1.6.0",
-        "@mysten/dapp-kit": "^0.15.2",
-        "@mysten/seal": "0.3.5",
-        "@mysten/sui": "^1.26.1"
-    },
-	"devDependencies": {
-		"@types/node": "^16.11.6",
-        "@typescript-eslint/eslint-plugin": "^8.29.0",
-        "@typescript-eslint/parser": "^8.29.0",
-		"builtin-modules": "3.3.0",
-		"esbuild": "0.17.3",
-		"obsidian": "latest",
-		"tslib": "2.4.0",
-        "typescript": "^5.8.2"
-	}
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@mysten/bcs": "^1.6.0",
+    "@mysten/dapp-kit": "0.15.2",
+    "@mysten/seal": "0.3.5",
+    "@mysten/sui": "1.26.1",
+    "dotenv": "^16.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^16.11.6",
+    "@typescript-eslint/eslint-plugin": "^8.29.0",
+    "@typescript-eslint/parser": "^8.29.0",
+    "builtin-modules": "3.3.0",
+    "esbuild": "0.17.3",
+    "obsidian": "latest",
+    "tslib": "2.4.0",
+    "typescript": "^5.8.2"
+  }
 }
