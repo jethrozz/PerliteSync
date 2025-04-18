@@ -2,6 +2,7 @@ import { PartialMessage } from './../node_modules/esbuild/lib/main.d';
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { MnemonicWallet } from './mnemonic-wallet';
 import * as dotenv from 'dotenv';
+import { SealUtil } from './utils/sealUtil';
 // Remember to rename these classes and interfaces!
 
 interface PerliteSyncSettings {
@@ -10,7 +11,7 @@ interface PerliteSyncSettings {
 }
 
 const DEFAULT_SETTINGS: PerliteSyncSettings = {
-    passphrase: '',
+    passphrase: 'table bar seat almost seven decrease nuclear series basket about render bless',
     address: ''
 }
 
@@ -36,14 +37,42 @@ export default class PerliteSyncPlugin extends Plugin {
                 const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
                 
                 fs.mkdirSync(outputDir, { recursive: true });
-
-                for (const file of files) {
-                    const sourcePath = path.join(vaultPath, file.path);
-                    const targetPath = path.join(outputDir, file.path);
+                let props = { 
+                    policyObject: '0x89dd28871bd4ef4c0428eb4a591e9215d744765dcaa037d6ae454b837ea085c5',
+                    cap_id: '0x36dd69ef377b3ca0c86cf7106c40c3d4e6ba44d149844ea945b097cb5b8d5b2d',
+                    moduleName: 'allowlist',
+                    wallet: this.mnemonicWallet };
+                const { handleSubmit, displayUpload, handlePublish, downloadFile } = SealUtil(props);
+                const blob_id = "laSt7bOUlWSl4AMwkYYjPZhEGjzZzNv_t3QgTXhgGF4";
+                // 上传文件
+                // const sourcePath = path.join(vaultPath, files[0].path);
+                // console.log("ready to submit", sourcePath); 
+                // fs.readFile(sourcePath, (err: any, data: any) => {
+                //     if (err) {
+                //         console.error("读取文件失败:", err);
+                //         return;
+                //     }
+                //     const fileName = path.basename(sourcePath);
+                //     let file = new File([data], fileName, {
+                //         type: 'text/plain',
+                //         lastModified: Date.now()
+                //     });
+                //     console.log("文件内容:", file);
+                //     handleSubmit(file);
                     
-                    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-                    fs.copyFileSync(sourcePath, targetPath);
-                }
+                // });
+                //发布文件
+                //handlePublish(props.policyObject, blob_id);
+                //下载文件
+                downloadFile(blob_id);
+                
+                // for (const file of files) {
+                //     const sourcePath = path.join(vaultPath, file.path);
+                //     const targetPath = path.join(outputDir, file.path);
+                    
+                //     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+                //     fs.copyFileSync(sourcePath, targetPath);
+                // }
                 
                 new Notice(`成功复制 ${files.length} 个文件到目录`);
             } catch (error) {

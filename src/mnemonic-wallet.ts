@@ -1,11 +1,15 @@
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { toBase64 } from '@mysten/sui/utils';
+import { toBase64, fromBase64 } from '@mysten/sui/utils';
+import { messageWithIntent, toSerializedSignature } from '@mysten/sui/cryptography'
+import { blake2b } from '@noble/hashes/blake2b';
+
 
 interface mnemoninWallet{
     mnemonic: string;
     address: string;
     privateKey: string;
     publicKey: string;
+    keypair: Ed25519Keypair;
 }
 
 
@@ -14,11 +18,12 @@ export class MnemonicWallet implements mnemoninWallet{
     address: string;
     privateKey: string;
     publicKey: string;
-
+    keypair: Ed25519Keypair;
     constructor(mnemonic: string){
         this.mnemonic = mnemonic;
         // 生成密钥对
         const keypair = Ed25519Keypair.deriveKeypair(mnemonic);
+        this.keypair = keypair;
         // 获取私钥
         const privateKey = keypair.getSecretKey();
         console.log('Private Key:', privateKey.toString());
@@ -31,15 +36,35 @@ export class MnemonicWallet implements mnemoninWallet{
         this.publicKey = toBase64(publicKey.toRawBytes());
     }
 
-    getAddress(): string{
+    public getAddress(): string{
         return this.address;
     }
 
-    // sign(message: string): string{
-    //     const keypair = Ed25519Keypair.deriveKeypair(this.mnemonic);
-    //     const signature = keypair.sign(message);
-    //     return signature;
-    // }
+    public async signPersonalMessage(message: Uint8Array): Promise<string>{
+        //let intent = messageWithIntent('PersonalMessage', message);
+        console.log("noPersonalMessage");
+        let { signature } = await this.keypair.signPersonalMessage(message);
+        return signature;
+    }
 
+
+
+    public async signTransaction(message: Uint8Array): Promise<string>{   
+        let intent = messageWithIntent('TransactionData', message);
+        const signature = await this.generateSignature(intent, this.keypair);
+        return signature;
+    }
+
+    protected async generateSignature(data: Uint8Array, keyPair: Ed25519Keypair) {
+        const digest = blake2b(data, { dkLen: 32 });
+        const pubkey = keyPair.getPublicKey();
+        const signature = await keyPair.sign(digest);
+        const signatureScheme = keyPair.getKeyScheme();
+        return toSerializedSignature({
+            signature,
+            signatureScheme,
+            publicKey: pubkey,
+        });
+    }
 }
 
