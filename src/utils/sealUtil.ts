@@ -1,5 +1,5 @@
 import { EncryptedObject, getAllowlistedKeyServers, NoAccessError, SealClient , SessionKey } from '@mysten/seal';
-import { fromHex, toBase64, toHex } from '@mysten/sui/utils';
+import { fromBase64, fromHex, toBase64, toHex } from '@mysten/sui/utils';
 import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { MnemonicWallet } from '../mnemonic-wallet';
@@ -35,7 +35,7 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
     const SUI_VIEW_TX_URL = `https://suiscan.xyz/testnet/tx`;
     const SUI_VIEW_OBJECT_URL = `https://suiscan.xyz/testnet/object`;
     const packageId = "0x4cb081457b1e098d566a277f605ba48410e26e66eaab5b3be4f6c560e9501800";
-    let info: Data;
+
     const services: WalrusService[] = [
         {
             id: 'service1',
@@ -88,56 +88,87 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
         return `${service?.publisherUrl.replace(/\/+$/, '')}/v1/${cleanPath}`;
     }
 
-    const handleSubmit = (file: File) => {
-        const suiClient = new SuiClient({ url: getFullnodeUrl('testnet') });
-        const client = new SealClient({
-            suiClient,
-            serverObjectIds: getAllowlistedKeyServers('testnet'),
-            verifyKeyServers: false,
-        });
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = async function (event) {
-                if (event.target && event.target.result) {
-                    const result = event.target.result;
-                    if (result instanceof ArrayBuffer) {
-                        const nonce = crypto.getRandomValues(new Uint8Array(5));
-                        const policyObjectBytes = fromHex(policyObject);
-                        const id = toHex(new Uint8Array([...policyObjectBytes, ...nonce]));
-                        const { encryptedObject: encryptedBytes } = await client.encrypt({
-                            threshold: 2,
-                            packageId,
-                            id,
-                            data: new Uint8Array(result),
-                        });
-                        const storageInfo = await storeBlob(encryptedBytes);
-                        info = displayUpload(storageInfo.info, file.type);
-                    
-                    } else {
-                        console.error('Unexpected result type:', typeof result);
+    const handleSubmit = async (file: File): Promise<Data> => {
+        if (!file) {
+            throw new Error('No file selected');
+        }
+
+        const reader = new FileReader();
+        return new Promise((resolve, reject) => {
+            reader.onload = async (event) => {
+                try {
+                    if (!event.target?.result || !(event.target.result instanceof ArrayBuffer)) {
+                        throw new Error('Invalid file data');
                     }
+                    const suiClient = new SuiClient({ url: getFullnodeUrl('testnet') });
+                    const client = new SealClient({
+                        suiClient,
+                        serverObjectIds: getAllowlistedKeyServers('testnet'),
+                        verifyKeyServers: false,
+                    });
+                    const nonce = crypto.getRandomValues(new Uint8Array(5));
+                    const policyObjectBytes = fromHex(policyObject);
+                    const id = toHex(new Uint8Array([...policyObjectBytes, ...nonce]));
+                    const { encryptedObject: encryptedBytes } = await client.encrypt({
+                        threshold: 2,
+                        packageId,
+                        id,
+                        data: new Uint8Array(event.target.result),
+                    });
+                    const storageInfo = await storeBlob(encryptedBytes);
+                    if(storageInfo){
+                        resolve(displayUpload(storageInfo.info, file.type));
+                    }else{
+                        reject(new Error('Failed to store blob'));
+                    }
+                } catch (error) {
+                    reject(error);
                 }
             };
             reader.readAsArrayBuffer(file);
-        } else {
-            console.error('No file selected');
-        }
+        });
     };
 
-    const storeBlob = (encryptedData: Uint8Array) => {
-        return fetch(`https://publisher.walrus-testnet.walrus.space/v1/blobs?epochs=1`, {
-            method: 'PUT',
-            body: encryptedData,
-        }).then((response) => {
-            if (response.status === 200) {
-                return response.json().then((info) => {
-                    return { info };
+    const storeBlob = async(encryptedData: Uint8Array) => {
+        let urls = ["https://publisher.walrus-testnet.walrus.space",
+            "https://wal-publisher-testnet.staketab.org",
+            "https://walrus-testnet-publisher.bartestnet.com",
+            "https://walrus-testnet-publisher.nodes.guru",
+            "https://sui-walrus-testnet.bwarelabs.com/publisher",
+            "https://walrus-testnet-publisher.stakin-nodes.com",
+            "https://testnet-publisher-walrus.kiliglab.io",
+            "https://walrus-testnet-publisher.nodeinfra.com",
+            "https://walrus-testnet.blockscope.net:11444",
+            "https://walrus-publish-testnet.chainode.tech:9003",
+            "https://walrus-testnet-publisher.starduststaking.com:11445",
+            "http://walrus-publisher-testnet.overclock.run:9001",
+            "http://walrus-testnet-publisher.everstake.one:9001",
+            "http://walrus.testnet.pops.one:9001",
+            "http://ivory-dakar-e5812.walrus.bdnodes.net:9001",
+            "http://publisher.testnet.sui.rpcpool.com:9001",
+            "http://walrus.krates.ai:9001",
+            "http://walrus-publisher-testnet.latitude-sui.com:9001",
+            "http://walrus-tn.juicystake.io:9090",
+            "http://walrus-testnet.stakingdefenseleague.com:9001",
+            "http://walrus.sui.thepassivetrust.com:9001",
+        ]
+        for (let url of urls) {
+            try{
+                console.log("try to store blob on", url);
+                const response = await fetch(url +"/v1/blobs?epochs=1", {
+                    method: 'PUT',
+                    body: encryptedData,
                 });
-            } else {
-                alert('Error publishing the blob on Walrus, please select a different Walrus service.');
-                throw new Error('Something went wrong when storing the blob!');
+                
+                if (response.status === 200) {
+                    const info = await response.json();
+                    return { info };
+                }
+            }catch(e){
+                console.error("Error publishing the blob on Walrus, please select a different Walrus service. try next url", e);
             }
-        });
+        }
+        return null;
     };
 
     const displayUpload = (storage_info: any, media_type: any): Data => {
@@ -217,17 +248,10 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
                 verifyKeyServers: false,
             });
             let message = sessionKey.getPersonalMessage();
-            console.log("message", new TextDecoder().decode(message));
-            //     let pmsg = "Accessing keys of package 0x4cb081457b1e098d566a277f605ba48410e26e66eaab5b3be4f6c560e9501800 for 10 mins from 2025-04-18 09:16:37 UTC, session key AlY0WeLXyY3O1mkeDfifOybe6ZVqB3HNjl1jMBGMm8s=";
-
             let signature = await wallet.signPersonalMessage(message);
-            console.log("signature", signature);
             const moveCallConstructor = await constructMoveCall(packageId, allowlistId);
-            const tx = new Transaction();
-            const result = await Transactions.signMessage(payload.args, tx);
 
-
-            await sessionKey.setPersonalMessageSignature("AFUqyDsUzIT+zYIIoP3Mqrsgl2F0NdJfISNEQRS99MLYFvZcFVKoRZRxj7TABP4Ex0uWd8vwrmRX5z42/xspPg1McHz8bhTaZDayFwqHEGs1MLQN9qGFE7bWHpE0sSt/Zg==");
+            await sessionKey.setPersonalMessageSignature(signature);
             await downloadAndDecrypt(
                 [blob_id],
                 sessionKey,
@@ -240,6 +264,7 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
         }
     }
 
+
     async function downloadAndDecrypt(
         blobIds: string[],
         sessionKey: SessionKey,
@@ -247,25 +272,48 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
         sealClient: SealClient,
         moveCallConstructor: (tx: Transaction, id: string) => void,
     ) {
-        const aggregators = ['aggregator1', 'aggregator2', 'aggregator3', 'aggregator4', 'aggregator5', 'aggregator6'];
+        //
+        const aggregators = ['https://aggregator.walrus-testnet.walrus.space',
+          'https://wal-aggregator-testnet.staketab.org',
+          'https://walrus-testnet-aggregator.bartestnet.com', 
+          'https://walrus-testnet.blockscope.net', 
+          'https://walrus-testnet-aggregator.nodes.guru', 
+          'https://walrus-cache-testnet.overclock.run',
+          'https://sui-walrus-testnet.bwarelabs.com/aggregator',
+          'https://walrus-testnet-aggregator.stakin-nodes.com',
+          'https://testnet-aggregator-walrus.kiliglab.io',
+          'https://walrus-cache-testnet.latitude-sui.com',
+          'https://walrus-testnet-aggregator.nodeinfra.com',
+          'https://walrus-tn.juicystake.io:9443',
+          'https://walrus-agg-testnet.chainode.tech:9002',
+          'https://walrus-testnet-aggregator.starduststaking.com:11444',
+          'http://walrus-testnet-aggregator.everstake.one:9000',
+          'http://walrus.testnet.pops.one:9000',
+          'http://scarlet-brussels-376c2.walrus.bdnodes.net:9000',
+          'http://aggregator.testnet.sui.rpcpool.com:9000',
+          'http://walrus.krates.ai:9000',
+          'http://walrus-testnet.stakingdefenseleague.com:9000',
+          'http://walrus.sui.thepassivetrust.com:9000'];
         // First, download all files in parallel (ignore errors)
         const downloadResults = await Promise.all(
             blobIds.map(async (blobId) => {
-                try {
-                    const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 10000);
-                    const randomAggregator = aggregators[Math.floor(Math.random() * aggregators.length)];
-                    const aggregatorUrl = `https://aggregator.walrus-testnet.walrus.space/v1/blobs/${blobId}`;
-                    const response = await fetch(aggregatorUrl, { signal: controller.signal });
-                    clearTimeout(timeout);
-                    if (!response.ok) {
-                        return null;
+                for (let aggregator of aggregators) {
+                    try {
+                        const controller = new AbortController();
+                        const timeout = setTimeout(() => controller.abort(), 10000);
+                        const aggregatorUrl = `${aggregator}/v1/blobs/${blobId}`;
+                        const response = await fetch(aggregatorUrl, { signal: controller.signal });
+                        clearTimeout(timeout);
+                        if (!response.ok) {
+                            continue;
+                        }
+                        return await response.arrayBuffer();
+                    } catch (err) {
+                        console.error(`Blob ${blobId} cannot be retrieved from Walrus`, err);
+                        continue;
                     }
-                    return await response.arrayBuffer();
-                } catch (err) {
-                    console.error(`Blob ${blobId} cannot be retrieved from Walrus`, err);
-                    return null;
                 }
+                return null;
             }),
         );
 

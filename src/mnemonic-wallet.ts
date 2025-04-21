@@ -1,4 +1,5 @@
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { bcs } from '@mysten/sui/bcs';
 import { toBase64, fromBase64 } from '@mysten/sui/utils';
 import { messageWithIntent, toSerializedSignature } from '@mysten/sui/cryptography'
 import { blake2b } from '@noble/hashes/blake2b';
@@ -41,9 +42,8 @@ export class MnemonicWallet implements mnemoninWallet{
     }
 
     public async signPersonalMessage(message: Uint8Array): Promise<string>{
-        //let intent = messageWithIntent('PersonalMessage', message);
-        console.log("noPersonalMessage");
-        let { signature } = await this.keypair.signPersonalMessage(message);
+        let intent = messageWithIntent('PersonalMessage', bcs.vector(bcs.u8()).serialize(message).toBytes());
+        const signature = await this.generateSignature(intent, this.keypair);
         return signature;
     }
 

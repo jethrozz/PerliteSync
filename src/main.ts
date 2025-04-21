@@ -43,11 +43,11 @@ export default class PerliteSyncPlugin extends Plugin {
                     moduleName: 'allowlist',
                     wallet: this.mnemonicWallet };
                 const { handleSubmit, displayUpload, handlePublish, downloadFile } = SealUtil(props);
-                const blob_id = "laSt7bOUlWSl4AMwkYYjPZhEGjzZzNv_t3QgTXhgGF4";
-                // 上传文件
+                const blob_id = "hryIYynN-rKTDEfxKSGxlYX6UMjtS1ytmGN3f4aAMV8";
+                //上传文件
                 // const sourcePath = path.join(vaultPath, files[0].path);
                 // console.log("ready to submit", sourcePath); 
-                // fs.readFile(sourcePath, (err: any, data: any) => {
+                // fs.readFile(sourcePath, async (err: any, data: any) => {
                 //     if (err) {
                 //         console.error("读取文件失败:", err);
                 //         return;
@@ -58,11 +58,12 @@ export default class PerliteSyncPlugin extends Plugin {
                 //         lastModified: Date.now()
                 //     });
                 //     console.log("文件内容:", file);
-                //     handleSubmit(file);
-                    
+                //     const result = await handleSubmit(file);
+                //     //发布文件
+                //     handlePublish(props.policyObject, result.blobId);
+                //     new Notice(`成功发布 ${files.length} 个文件到合约`);
                 // });
-                //发布文件
-                //handlePublish(props.policyObject, blob_id);
+                   
                 //下载文件
                 downloadFile(blob_id);
                 
@@ -74,7 +75,7 @@ export default class PerliteSyncPlugin extends Plugin {
                 //     fs.copyFileSync(sourcePath, targetPath);
                 // }
                 
-                new Notice(`成功复制 ${files.length} 个文件到目录`);
+                
             } catch (error) {
                 new Notice('文件复制失败: ' + error.message);
                 console.error(error);
