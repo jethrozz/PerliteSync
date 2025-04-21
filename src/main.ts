@@ -1,7 +1,6 @@
 import { PartialMessage } from './../node_modules/esbuild/lib/main.d';
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { MnemonicWallet } from './mnemonic-wallet';
-import * as dotenv from 'dotenv';
 import { SealUtil } from './utils/sealUtil';
 // Remember to rename these classes and interfaces!
 
@@ -20,7 +19,6 @@ export default class PerliteSyncPlugin extends Plugin {
     mnemonicWallet: MnemonicWallet;
     async onload() {
         await this.loadSettings();
-        dotenv.config();
         try {
             this.mnemonicWallet = new MnemonicWallet(this.settings.passphrase);
             console.log(this.mnemonicWallet.getAddress());
@@ -33,10 +31,12 @@ export default class PerliteSyncPlugin extends Plugin {
                 const fs = require('fs');
                 const path = require('path');
                 const files = this.app.vault.getMarkdownFiles();
-                const outputDir = 'C:\\Users\\77658\\Documents\\testcopy_obsidian';
+                let dataAdapter = this.app.vault.adapter;
+                //const outputDir = 'C:\\Users\\77658\\Documents\\testcopy_obsidian';
+                const outputDir = '/Users/77658/Documents/testcopy_obsidian';
                 const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
                 
-                fs.mkdirSync(outputDir, { recursive: true });
+                //fs.mkdirSync(outputDir, { recursive: true });
                 let props = { 
                     policyObject: '0x89dd28871bd4ef4c0428eb4a591e9215d744765dcaa037d6ae454b837ea085c5',
                     cap_id: '0x36dd69ef377b3ca0c86cf7106c40c3d4e6ba44d149844ea945b097cb5b8d5b2d',
@@ -65,7 +65,7 @@ export default class PerliteSyncPlugin extends Plugin {
                 // });
                    
                 //下载文件
-                downloadFile(blob_id);
+                downloadFile(blob_id, dataAdapter);
                 
                 // for (const file of files) {
                 //     const sourcePath = path.join(vaultPath, file.path);
@@ -143,10 +143,6 @@ export default class PerliteSyncPlugin extends Plugin {
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-        
-        if (!this.settings.passphrase && process.env.IS_TEST) {
-            this.settings.passphrase = process.env.PASSPHRASE || "";
-        }
     }
 
     async saveSettings() {

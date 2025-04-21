@@ -3,6 +3,7 @@ import { fromBase64, fromHex, toBase64, toHex } from '@mysten/sui/utils';
 import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { MnemonicWallet } from '../mnemonic-wallet';
+import { DataAdapter } from 'obsidian';
 
 type WalrusService = {
     id: string;
@@ -231,7 +232,7 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
         }
     }
 
-    async function downloadFile(blob_id: string) {
+    async function downloadFile(blob_id: string, adapter: DataAdapter) {
         const TTL_MIN = 10;
         const allowlistId = "0x89dd28871bd4ef4c0428eb4a591e9215d744765dcaa037d6ae454b837ea085c5";
         const sessionKey = new SessionKey({
@@ -253,6 +254,7 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
 
             await sessionKey.setPersonalMessageSignature(signature);
             await downloadAndDecrypt(
+                adapter,
                 [blob_id],
                 sessionKey,
                 suiClient,
@@ -266,6 +268,7 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
 
 
     async function downloadAndDecrypt(
+        adapter: DataAdapter,
         blobIds: string[],
         sessionKey: SessionKey,
         suiClient: SuiClient,
@@ -366,7 +369,7 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
                 console.log('解密后的文件内容:', textContent);
                 const blob = new Blob([decryptedFile], { type: 'text/markdown' });
                 console.log('blob', blob);
-                saveToLocal(blob, `decrypted_file_${Date.now()}.md`, './');    //   const blob = new Blob([decryptedFile], { type: 'image/jpg' });
+                saveToLocal(adapter, blob, `decrypted_file_${Date.now()}.md`);    //   const blob = new Blob([decryptedFile], { type: 'image/jpg' });
             } catch (err) {
                 console.log(err);
                 const errorMsg =
@@ -388,22 +391,15 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
         };
     }
 
-    async function saveToLocal(blob: Blob, fileName: string, outputDir: string) {
+    async function saveToLocal(adapter: DataAdapter, blob: Blob, fileName: string) {
         try {
-            const fs = require('fs');
             const path = require('path');
-
+            adapter.mkdir("download");
             // 确保输出目录存在
-            fs.mkdirSync(outputDir, { recursive: true });
-
-            // 将 Blob 转换为 Buffer
             const arrayBuffer = await blob.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
+            adapter.writeBinary(path.join("download", fileName), arrayBuffer);
 
-            // 保存文件
-            const filePath = path.join(outputDir, fileName);
-            fs.writeFileSync(filePath, buffer);
-            console.log(`文件已保存到: ${filePath}`);
+            console.log(`文件已保存到: ${path.join("download", fileName)}`);
         } catch (error) {
             console.error('保存文件失败:', error);
             throw error;
