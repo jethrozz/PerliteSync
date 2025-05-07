@@ -1,5 +1,5 @@
 import { PartialMessage } from './../node_modules/esbuild/lib/main.d';
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Menu, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { MnemonicWallet } from './mnemonic-wallet';
 import { SealUtil } from './utils/sealUtil';
 // Remember to rename these classes and interfaces!
@@ -20,66 +20,95 @@ export default class PerliteSyncPlugin extends Plugin {
     async onload() {
         await this.loadSettings();
         try {
-            this.mnemonicWallet = new MnemonicWallet(this.settings.passphrase);
-            console.log(this.mnemonicWallet.getAddress());
+            if (this.settings.passphrase === '') {
+                new Notice('请先配置perlite sync 插件');
+            } else {
+                this.mnemonicWallet = new MnemonicWallet(this.settings.passphrase);
+                console.log(this.mnemonicWallet.getAddress());
+            }
+
         } catch (error) {
             console.error("init mnemonic wallet failed");
         }
         // This creates an icon in the left ribbon.
-        const ribbonIconEl = this.addRibbonIcon('dice', 'PerliteSync', (evt: MouseEvent) => {
-            try {
-                const fs = require('fs');
-                const path = require('path');
-                const files = this.app.vault.getMarkdownFiles();
-                let dataAdapter = this.app.vault.adapter;
-                //const outputDir = 'C:\\Users\\77658\\Documents\\testcopy_obsidian';
-                const outputDir = '/Users/77658/Documents/testcopy_obsidian';
-                const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
-                
-                //fs.mkdirSync(outputDir, { recursive: true });
-                let props = { 
-                    policyObject: '0x89dd28871bd4ef4c0428eb4a591e9215d744765dcaa037d6ae454b837ea085c5',
-                    cap_id: '0x36dd69ef377b3ca0c86cf7106c40c3d4e6ba44d149844ea945b097cb5b8d5b2d',
-                    moduleName: 'allowlist',
-                    wallet: this.mnemonicWallet };
-                const { handleSubmit, displayUpload, handlePublish, downloadFile } = SealUtil(props);
-                const blob_id = "hryIYynN-rKTDEfxKSGxlYX6UMjtS1ytmGN3f4aAMV8";
-                //上传文件
-                // const sourcePath = path.join(vaultPath, files[0].path);
-                // console.log("ready to submit", sourcePath); 
-                // fs.readFile(sourcePath, async (err: any, data: any) => {
-                //     if (err) {
-                //         console.error("读取文件失败:", err);
-                //         return;
-                //     }
-                //     const fileName = path.basename(sourcePath);
-                //     let file = new File([data], fileName, {
-                //         type: 'text/plain',
-                //         lastModified: Date.now()
-                //     });
-                //     console.log("文件内容:", file);
-                //     const result = await handleSubmit(file);
-                //     //发布文件
-                //     handlePublish(props.policyObject, result.blobId);
-                //     new Notice(`成功发布 ${files.length} 个文件到合约`);
-                // });
-                   
-                //下载文件
-                downloadFile(blob_id, dataAdapter);
-                
-                // for (const file of files) {
-                //     const sourcePath = path.join(vaultPath, file.path);
-                //     const targetPath = path.join(outputDir, file.path);
-                    
-                //     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-                //     fs.copyFileSync(sourcePath, targetPath);
-                // }
-                
-                
-            } catch (error) {
-                new Notice('文件复制失败: ' + error.message);
-                console.error(error);
+        const ribbonIconEl = this.addRibbonIcon('folder-sync', 'PerliteSync', (evt: MouseEvent) => {
+            if (this.settings.passphrase === '') {
+                new Notice('请先配置perlite sync 插件');
+                return;
             }
+            let dataAdapter = this.app.vault.adapter;
+            let props = {
+                policyObject: '0x89dd28871bd4ef4c0428eb4a591e9215d744765dcaa037d6ae454b837ea085c5',
+                cap_id: '0x36dd69ef377b3ca0c86cf7106c40c3d4e6ba44d149844ea945b097cb5b8d5b2d',
+                moduleName: 'allowlist',
+                wallet: this.mnemonicWallet
+            };
+            const menu = new Menu();
+            menu.addItem((item) =>
+                item
+                   .setTitle('init')
+                   .setIcon('webhook')
+                   .onClick(() => {
+                        new Notice('init');
+            }));
+            menu.addItem((item) =>
+                item
+                    .setTitle('push')
+                    .setIcon('book-up')
+                    .onClick(() => {
+                        new Notice('push to walrus');
+                        try{
+                            const { handleSubmit, displayUpload, handlePublish } = SealUtil(props);
+                            //上传文件
+                            const fs = require('fs');
+                            const path = require('path');
+                            const files = this.app.vault.getMarkdownFiles();
+    
+                            //const outputDir = 'C:\\Users\\77658\\Documents\\testcopy_obsidian';
+                            const outputDir = '/Users/77658/Documents/testcopy_obsidian';
+                            const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
+                            // const sourcePath = path.join(vaultPath, files[0].path);
+                            // console.log("ready to submit", sourcePath); 
+                            // fs.readFile(sourcePath, async (err: any, data: any) => {
+                            //     if (err) {
+                            //         console.error("读取文件失败:", err);
+                            //         return;
+                            //     }
+                            //     const fileName = path.basename(sourcePath);
+                            //     let file = new File([data], fileName, {
+                            //         type: 'text/plain',
+                            //         lastModified: Date.now()
+                            //     });
+                            //     console.log("文件内容:", file);
+                            //     const result = await handleSubmit(file);
+                            //     //发布文件
+                            //     handlePublish(props.policyObject, result.blobId);
+                            //     new Notice(`成功发布 ${files.length} 个文件到合约`);
+                            // });
+                        }catch(e){
+                            console.log(e);
+                        }
+                    })
+            );
+
+            menu.addItem((item) =>
+                item
+                    .setTitle('pull')
+                    .setIcon('book-down')
+                    .onClick(() => {
+                        try{
+                            new Notice('pull from walrus');
+                            //const { downloadFile } = SealUtil(props);
+                            //const blob_id = "hryIYynN-rKTDEfxKSGxlYX6UMjtS1ytmGN3f4aAMV8";
+                            //downloadFile(blob_id, dataAdapter);
+                        }catch(e){
+                            console.log(e);
+                        }
+                    })
+            );
+
+
+            menu.showAtMouseEvent(evt);
         });
         // Perform additional things with the ribbon
         ribbonIconEl.addClass('my-plugin-ribbon-class');
@@ -187,7 +216,7 @@ class PerliteSyncSettingTab extends PluginSettingTab {
                 .setValue(this.plugin.settings.passphrase)
                 .onChange(async (value) => {
                     try {
-                        if(value != "" && this.plugin.settings.passphrase != value) {
+                        if (value != "" && this.plugin.settings.passphrase != value) {
                             this.plugin.mnemonicWallet = new MnemonicWallet(value);
                         }
                     } catch (error) {
