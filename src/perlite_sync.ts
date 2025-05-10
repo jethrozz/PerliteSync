@@ -1,5 +1,6 @@
 
-function init() {
+
+function init(vaultName: string, address: string) {
     //初始化，先获取到vault的名称，去链上找到该钱包是否有该vault,有就提示同步，否则，提示链上无对应对象，需要先上传
 }
 

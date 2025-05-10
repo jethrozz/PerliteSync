@@ -16,7 +16,9 @@
     "@mysten/dapp-kit": "0.15.2",
     "@mysten/seal": "0.3.5",
     "@mysten/sui": "1.26.1",
-    "dotenv": "^16.5.0"
+    "dotenv": "^16.5.0",
+    "perlitesync": "file:",
+    "pouchdb": "^9.0.0"
   },
   "devDependencies": {
     "@types/node": "^16.11.6",
