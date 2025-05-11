@@ -1,4 +1,5 @@
 import { PartialMessage } from './../node_modules/esbuild/lib/main.d';
+import {init } from './perlite_sync';
 import { App, Editor, MarkdownView, Modal, Menu, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { MnemonicWallet } from './mnemonic-wallet';
 import { SealUtil } from './utils/sealUtil';
@@ -49,7 +50,11 @@ export default class PerliteSyncPlugin extends Plugin {
                    .setTitle('init')
                    .setIcon('webhook')
                    .onClick(() => {
-                        new Notice('init');
+                        const allFiles = this.app.vault.getFiles();
+                        console.log(this.app.vault.getRoot());
+                        console.log(this.app.vault.getName());
+                        console.log(this.app.vault.getMarkdownFiles());
+
             }));
             menu.addItem((item) =>
                 item
@@ -67,6 +72,8 @@ export default class PerliteSyncPlugin extends Plugin {
                             //const outputDir = 'C:\\Users\\77658\\Documents\\testcopy_obsidian';
                             const outputDir = '/Users/77658/Documents/testcopy_obsidian';
                             const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
+                            const vaultName = this.app.vault.getName();
+                            
                             // const sourcePath = path.join(vaultPath, files[0].path);
                             // console.log("ready to submit", sourcePath); 
                             // fs.readFile(sourcePath, async (err: any, data: any) => {
