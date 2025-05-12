@@ -1,5 +1,5 @@
 import { PartialMessage } from './../node_modules/esbuild/lib/main.d';
-import {init } from './perlite_sync';
+import { init, push } from './perlite_sync';
 import { App, Editor, MarkdownView, Modal, Menu, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { MnemonicWallet } from './mnemonic-wallet';
 import { SealUtil } from './utils/sealUtil';
@@ -60,10 +60,10 @@ export default class PerliteSyncPlugin extends Plugin {
                 item
                     .setTitle('push')
                     .setIcon('book-up')
-                    .onClick(() => {
+                    .onClick(async () => {
                         new Notice('push to walrus');
                         try{
-                            const { handleSubmit, displayUpload, handlePublish } = SealUtil(props);
+                            //const { handleSubmit, displayUpload, handlePublish } = SealUtil(props);
                             //上传文件
                             const fs = require('fs');
                             const path = require('path');
@@ -73,7 +73,7 @@ export default class PerliteSyncPlugin extends Plugin {
                             const outputDir = '/Users/77658/Documents/testcopy_obsidian';
                             const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
                             const vaultName = this.app.vault.getName();
-                            
+                            await push(vaultName, vaultPath, files, this.mnemonicWallet);
                             // const sourcePath = path.join(vaultPath, files[0].path);
                             // console.log("ready to submit", sourcePath); 
                             // fs.readFile(sourcePath, async (err: any, data: any) => {

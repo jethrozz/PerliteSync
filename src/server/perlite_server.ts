@@ -35,6 +35,11 @@ export type File = {
     created_at: Date,
     updated_at: Date,
 }
+export type FlatFile = {
+    id: string, // 目录ID
+    name: string, // 目录名称
+    is_file: boolean, // 是否是文件
+}
 
 
 const queryByAddressAndType = graphql(`
@@ -54,6 +59,9 @@ const queryByAddressAndType = graphql(`
   `);
 export async function getPerliteVaultByAddress(address: string, vaultName: string): Promise<PerliteVault| undefined> {
     let dirs = await getUserOwnDirectory(address, GRAPHQL_URL);
+    if(dirs.length == 0){
+        return undefined;
+    }
     let files = await getUserOwnFile(address, GRAPHQL_URL);
     const dirMap = new Map<string, Directory>();
     const parentMap = new Map<string, Directory[]>();
@@ -113,7 +121,6 @@ export async function getPerliteVaultByAddress(address: string, vaultName: strin
     }
 
 }
-
 async function getUserOwnDirectory(address: string, graphqlUrl: string): Promise<Array<Directory>> {
     let result: Array<Directory> = new Array();
     const suiGraphQLClient = new SuiGraphQLClient({
@@ -127,7 +134,10 @@ async function getUserOwnDirectory(address: string, graphqlUrl: string): Promise
             type: type,
         },
     });
-
+    console.log("dirs,", dataResult);
+    if(dataResult.data?.address?.objects?.edges.length == 0){
+        return result;
+    }
     const dirs = dataResult.data?.address?.objects?.edges.map(edge => edge.node.contents?.json as {
         id: string,
         name: string,
@@ -162,7 +172,10 @@ async function getUserOwnFile(address: string, graphqlUrl: string): Promise<Arra
             type: type,
         },
     });
-
+    console.log("files,", dataResult);
+    if (dataResult.data?.address?.objects?.edges.length == 0) {
+        return result;
+    }
     const files = dataResult.data?.address?.objects?.edges.map(edge => edge.node.contents?.json as {
         id: string,
         title: string,

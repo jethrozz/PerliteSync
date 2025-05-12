@@ -16,7 +16,7 @@ export type MoveCallConstructor = (tx: Transaction, id: string) => void;
 export type Data = {
     status: string;
     blobId: string;
-    endEpoch: string;
+    endEpoch: number;
     suiRefType: string;
     suiRef: string;
     suiBaseUrl: string;
@@ -26,13 +26,12 @@ export type Data = {
 };
 
 interface WalrusUploadProps {
-    policyObject: string;
-    cap_id: string;
+    vaultId: string;
     moduleName: string;
     wallet: MnemonicWallet;
 }
 
-export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUploadProps) {
+export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
     const SUI_VIEW_TX_URL = `https://suiscan.xyz/testnet/tx`;
     const SUI_VIEW_OBJECT_URL = `https://suiscan.xyz/testnet/object`;
     const packageId = "0x4cb081457b1e098d566a277f605ba48410e26e66eaab5b3be4f6c560e9501800";
@@ -108,7 +107,7 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
                         verifyKeyServers: false,
                     });
                     const nonce = crypto.getRandomValues(new Uint8Array(5));
-                    const policyObjectBytes = fromHex(policyObject);
+                    const policyObjectBytes = fromHex(vaultId);
                     const id = toHex(new Uint8Array([...policyObjectBytes, ...nonce]));
                     const { encryptedObject: encryptedBytes } = await client.encrypt({
                         threshold: 2,
@@ -205,14 +204,18 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
         return info;
     };
 
-    async function handlePublish(wl_id: string, cap_id: string, moduleName: string, blob_id: string) {
+    async function handlePublish(title: string, end_epoch: number, parent_dir: string, blob_id: string) {
         const tx = new Transaction();
         tx.setSender(wallet.getAddress());
-        tx.moveCall({
-            target: `${packageId}::${moduleName}::publish`,
-            arguments: [tx.object(wl_id), tx.object(cap_id), tx.pure.string(blob_id)],
+        let fileResult = tx.moveCall({
+            target: `${packageId}::perlite_sync::new_file`,
+            arguments: [tx.pure.string(title), tx.pure.string(blob_id), tx.pure.u64(end_epoch), tx.object(parent_dir), tx.object("0x6")],
         });
 
+        tx.moveCall({
+            target: `${packageId}::perlite_sync::transfer_file`,
+            arguments: [tx.object(fileResult), tx.pure.address(wallet.getAddress())],
+        });
         tx.setGasBudget(10000000);
         const suiClient = new SuiClient({ url: getFullnodeUrl('testnet') });
         try {
@@ -410,7 +413,8 @@ export function SealUtil({ policyObject, cap_id, moduleName, wallet }: WalrusUpl
         handleSubmit,
         displayUpload,
         downloadFile,
-        handlePublish: (wl_id: string,  blob_id: string) => handlePublish(wl_id, cap_id, moduleName, blob_id)
+        handlePublish: (title: string, end_epoch: number, parent_dir: string, blob_id: string) => 
+            handlePublish(title, end_epoch, parent_dir, blob_id)
     };
 }
 
