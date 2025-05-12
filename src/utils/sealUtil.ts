@@ -4,7 +4,7 @@ import { getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { MnemonicWallet } from '../mnemonic-wallet';
 import { DataAdapter } from 'obsidian';
-
+import { PACKAGE_ID } from '../constant';
 type WalrusService = {
     id: string;
     name: string;
@@ -208,12 +208,12 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
         const tx = new Transaction();
         tx.setSender(wallet.getAddress());
         let fileResult = tx.moveCall({
-            target: `${packageId}::perlite_sync::new_file`,
+            target: PACKAGE_ID+'::perlite_sync::new_file',
             arguments: [tx.pure.string(title), tx.pure.string(blob_id), tx.pure.u64(end_epoch), tx.object(parent_dir), tx.object("0x6")],
         });
 
         tx.moveCall({
-            target: `${packageId}::perlite_sync::transfer_file`,
+            target: `${PACKAGE_ID}::perlite_sync::transfer_file`,
             arguments: [tx.object(fileResult), tx.pure.address(wallet.getAddress())],
         });
         tx.setGasBudget(10000000);
@@ -228,7 +228,7 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
                     transactionBlock: txBytes,
                     signature: signature,
                 });
-                console.log("txResult", txResult);
+                console.log(" publish file txResult", txResult);
             })();
         } catch (e) {
             console.log("tx build error", e);

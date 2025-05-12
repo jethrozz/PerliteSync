@@ -3,6 +3,7 @@ import { init, push } from './perlite_sync';
 import { App, Editor, MarkdownView, Modal, Menu, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { MnemonicWallet } from './mnemonic-wallet';
 import { SealUtil } from './utils/sealUtil';
+import { PerliteVault } from './server/perlite_server';
 // Remember to rename these classes and interfaces!
 
 interface PerliteSyncSettings {
@@ -18,6 +19,7 @@ const DEFAULT_SETTINGS: PerliteSyncSettings = {
 export default class PerliteSyncPlugin extends Plugin {
     settings: PerliteSyncSettings;
     mnemonicWallet: MnemonicWallet;
+    vault: PerliteVault | undefined;
     async onload() {
         await this.loadSettings();
         try {
@@ -49,13 +51,22 @@ export default class PerliteSyncPlugin extends Plugin {
                 item
                    .setTitle('init')
                    .setIcon('webhook')
-                   .onClick(() => {
+                   .onClick( async () => {
                         const allFiles = this.app.vault.getFiles();
-                        console.log(this.app.vault.getRoot());
-                        console.log(this.app.vault.getName());
-                        console.log(this.app.vault.getMarkdownFiles());
-
-            }));
+                        // console.log(this.app.vault.getRoot());
+                        // console.log(this.app.vault.getName());
+                        // console.log(this.app.vault.getMarkdownFiles());
+                        const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
+                        const vaultName = this.app.vault.getName();
+                        this.vault = await init(vaultName, this.mnemonicWallet.getAddress(), this.mnemonicWallet);
+                        console.log("vault", this.vault);
+                        if(this.vault){
+                            new Notice('init success, vaultId:'+this.vault.id+'vaultName:'+this.vault.name);
+                        }else{
+                            new Notice('init failed');
+                        }
+                    })
+            );
             menu.addItem((item) =>
                 item
                     .setTitle('push')
@@ -73,7 +84,10 @@ export default class PerliteSyncPlugin extends Plugin {
                             const outputDir = '/Users/77658/Documents/testcopy_obsidian';
                             const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
                             const vaultName = this.app.vault.getName();
-                            await push(vaultName, vaultPath, files, this.mnemonicWallet);
+                            let vault = await init(vaultName, this.mnemonicWallet.getAddress(), this.mnemonicWallet);
+                            if(vault){
+                                await push(vault, vaultPath, files, this.mnemonicWallet);
+                            }
                             // const sourcePath = path.join(vaultPath, files[0].path);
                             // console.log("ready to submit", sourcePath); 
                             // fs.readFile(sourcePath, async (err: any, data: any) => {
