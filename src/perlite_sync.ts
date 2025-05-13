@@ -64,17 +64,20 @@ export async function push(vault: PerliteVault, vaultLocalPath: string, allMarkd
         let map = flattenVaultFilesOptimized(vault);
         console.log("vaultMap", map);
         //先检查目录是否创建，没有就创建
-        let newDirMap = new Map<string, boolean>();
+        let newDirMap = new Map<string, any>();
+        let waitTransferDirs = [];
+        let waitTransferFiles = [];
         let tx = new Transaction();
         tx.setSender(address);
-        tx.setGasBudget(10000000);
+        //tx.setGasBudget(10000000);
                         //上传文件
                         let props = {
                             vaultId: vaultId,
                             moduleName: 'perlite_sync',
                             wallet: this.mnemonicWallet
                         };
-                        const { handleSubmit, displayUpload, handlePublish } = SealUtil(props);
+        const { handleSubmit, displayUpload, handlePublish } = SealUtil(props);
+        
         for(let j=0; j<allMarkdownFiles.length; j++){
             let file = allMarkdownFiles[j];
             if (map.has(file.path)) {
@@ -86,7 +89,7 @@ export async function push(vault: PerliteVault, vaultLocalPath: string, allMarkd
                 let tempPath = "";
                 console.log("currFilePathSplit", currFilePathSplit);
                 let parentObjMap = new Map<string, any>();
-                let waitProcessFiles = [];
+                
                 parentObjMap.set(currFilePathSplit[0], vaultId);
                 for (let i = 0; i < currFilePathSplit.length - 1; i++) {
                     let currDir = currFilePathSplit[i];
@@ -97,9 +100,8 @@ export async function push(vault: PerliteVault, vaultLocalPath: string, allMarkd
                     }
                     if (newDirMap.has(tempPath)) {
                         console.log("has dir", tempPath);
+                        parentObjMap.set(tempPath+"/"+currFilePathSplit[i+1], newDirMap.get(tempPath));
                         continue;
-                    }else{
-                        newDirMap.set(tempPath, true);
                     }
 
                     let parent = parentObjMap.get(tempPath);
@@ -110,9 +112,11 @@ export async function push(vault: PerliteVault, vaultLocalPath: string, allMarkd
                         function: 'new_directory',
                         arguments: [tx.pure.string(currDir), tx.object(parent), tx.object("0x6")],
                     });
+                    newDirMap.set(tempPath, par);
                     parentObjMap.set(tempPath+"/"+currFilePathSplit[i+1], par);
+                    waitTransferDirs.push(par);
                 }
-
+                console.log("parentObjMap", parentObjMap);
                 //上传文件
                 const fs = require('fs');
                 const path = require('path');
@@ -131,26 +135,29 @@ export async function push(vault: PerliteVault, vaultLocalPath: string, allMarkd
                         target: PACKAGE_ID+'::perlite_sync::new_file',
                         arguments: [tx.pure.string(fileName), tx.pure.string(result.blobId), tx.pure.u64(result.endEpoch), tx.object(parent_dir), tx.object("0x6")],
                     });
-                    tx.moveCall({
-                        target: `${PACKAGE_ID}::perlite_sync::transfer_file`,
-                        arguments: [tx.object(fileResult), tx.pure.address(wallet.getAddress())],
-                    });
+                    waitTransferFiles.push(fileResult);
                 }
-
-                
-                parentObjMap.forEach((key, value) => {
-                    console.log("key", key);
-                    console.log("value", value);
-                    tx.moveCall({
-                        package: PACKAGE_ID,
-                        module: 'perlite_sync',
-                        function: 'transfer_dir',
-                        arguments: [tx.object(value), tx.pure.address(address)],
-                    });
-                })
-
             }
         }
+        //处理目录
+        waitTransferDirs.forEach(dir => {
+            tx.moveCall({
+                package: PACKAGE_ID,
+                module: 'perlite_sync',
+                function: 'transfer_dir',
+                arguments: [tx.object(dir), tx.pure.address(address)],
+            });
+        });
+        //处理文件
+        waitTransferFiles.forEach(file => {
+            tx.moveCall({
+                package: PACKAGE_ID,
+                module: 'perlite_sync',
+                function: 'transfer_file',
+                arguments: [tx.object(file), tx.pure.address(address)],
+            });
+        });
+
         const suiClient = new SuiClient({ url: getFullnodeUrl(NET_WORK) });
         try {
             let txBytes = await tx.build({ client: suiClient });
