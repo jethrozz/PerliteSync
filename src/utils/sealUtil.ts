@@ -5,6 +5,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { MnemonicWallet } from '../mnemonic-wallet';
 import { DataAdapter } from 'obsidian';
 import { PACKAGE_ID } from '../constant';
+import {File as PerliteFile} from '../server/perlite_server';
 type WalrusService = {
     id: string;
     name: string;
@@ -235,9 +236,8 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
         }
     }
 
-    async function downloadFile(blob_id: string, adapter: DataAdapter) {
+    async function downloadFile(file: PerliteFile, adapter: DataAdapter) {
         const TTL_MIN = 10;
-        const allowlistId = "0x89dd28871bd4ef4c0428eb4a591e9215d744765dcaa037d6ae454b837ea085c5";
         const sessionKey = new SessionKey({
             address: wallet.getAddress(),
             packageId,
@@ -253,17 +253,22 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
             });
             let message = sessionKey.getPersonalMessage();
             let signature = await wallet.signPersonalMessage(message);
-            const moveCallConstructor = await constructMoveCall(packageId, allowlistId);
+            const moveCallConstructor = await constructMoveCall(packageId, file.id);
 
             await sessionKey.setPersonalMessageSignature(signature);
-            await downloadAndDecrypt(
+            const blobs = await downloadAndDecrypt(
                 adapter,
-                [blob_id],
+                [file.blob_id],
                 sessionKey,
                 suiClient,
                 client,
                 moveCallConstructor
             );
+            console.log("blobs length", blobs.length);
+            for(let i=0; i<blobs.length; i++){
+                const blob = blobs[i];
+                await saveToLocal(adapter, blob, file.title);
+            }
         } catch (error: any) {
             console.error('Error:', error);
         }
@@ -277,7 +282,7 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
         suiClient: SuiClient,
         sealClient: SealClient,
         moveCallConstructor: (tx: Transaction, id: string) => void,
-    ) {
+    ): Promise<Blob[]>{
         //
         const aggregators = ['https://aggregator.walrus-testnet.walrus.space',
           'https://wal-aggregator-testnet.staketab.org',
@@ -301,6 +306,8 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
           'http://walrus-testnet.stakingdefenseleague.com:9000',
           'http://walrus.sui.thepassivetrust.com:9000'];
         // First, download all files in parallel (ignore errors)
+        const blobs: Blob[] = [];
+
         const downloadResults = await Promise.all(
             blobIds.map(async (blobId) => {
                 for (let aggregator of aggregators) {
@@ -331,7 +338,7 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
             const errorMsg =
                 'Cannot retrieve files from this Walrus aggregator, try again (a randomly selected aggregator will be used). Files uploaded more than 1 epoch ago have been deleted from Walrus.';
             console.error(errorMsg);
-            return;
+            return blobs;
         }
 
         // Fetch keys in batches of <=10
@@ -350,7 +357,7 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
                         ? 'No access to decryption keys'
                         : 'Unable to decrypt files, try again';
                 console.error(errorMsg, err);
-                return;
+                return blobs;
             }
         }
 
@@ -368,11 +375,9 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
                     txBytes,
                 });
                 // 将解密后的文件内容转换为文本
-                const textContent = new TextDecoder().decode(decryptedFile);
-                console.log('解密后的文件内容:', textContent);
                 const blob = new Blob([decryptedFile], { type: 'text/markdown' });
                 console.log('blob', blob);
-                saveToLocal(adapter, blob, `decrypted_file_${Date.now()}.md`);    //   const blob = new Blob([decryptedFile], { type: 'image/jpg' });
+                blobs.push(blob);
             } catch (err) {
                 console.log(err);
                 const errorMsg =
@@ -380,16 +385,17 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
                         ? 'No access to decryption keys'
                         : 'Unable to decrypt files, try again';
                 console.error(errorMsg, err);
-                return;
+                return blobs;
             }
         }
+        return blobs;
     };
 
-    function constructMoveCall(packageId: string, allowlistId: string): MoveCallConstructor {
+    function constructMoveCall(packageId: string, fileId: string): MoveCallConstructor {
         return (tx: Transaction, id: string) => {
             tx.moveCall({
-                target: `${packageId}::allowlist::seal_approve`,
-                arguments: [tx.pure.vector('u8', fromHex(id)), tx.object(allowlistId)],
+                target: `${packageId}::perlite_sync::seal_approve`,
+                arguments: [tx.pure.vector('u8', fromHex(id)), tx.object(fileId)],
             });
         };
     }

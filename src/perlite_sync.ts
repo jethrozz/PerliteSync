@@ -1,4 +1,4 @@
-import { TFile } from 'obsidian';
+import { DataAdapter, TFile } from 'obsidian';
 import { getPerliteVaultByAddress, PerliteVaultDir } from './server/perlite_server';
 import { PerliteVault } from './server/perlite_server';
 import { MnemonicWallet } from './mnemonic-wallet';
@@ -239,7 +239,16 @@ function flattenVaultDir(vault: PerliteVault): Map<string, string> {
     return dirMap;
 }
 
-function pull() {
+export async function pull(vault: PerliteVault, vaultLocalPath: string, allMarkdownFiles: TFile[], wallet: MnemonicWallet, adapter: DataAdapter) {
     //下载，先获取到vault的名称，去链上找到该钱包是否有该vault, 没有，就不下载
     //有，判断是否有更新
+    const vaultId = vault.id;
+    const props = {
+        vaultId: vaultId,
+        moduleName: 'perlite_sync',
+        wallet: this.mnemonicWallet
+    };
+    const { downloadFile } = SealUtil(props);
+    //循环遍历
+    // adapter.exists
 }
