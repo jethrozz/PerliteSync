@@ -1,5 +1,5 @@
 import { PartialMessage } from './../node_modules/esbuild/lib/main.d';
-import { init, push } from './perlite_sync';
+import { init, pull, push } from './perlite_sync';
 import { App, Editor, MarkdownView, Modal, Menu, Notice, Plugin, PluginSettingTab, Setting, FileSystemAdapter } from 'obsidian';
 import { MnemonicWallet } from './mnemonic-wallet';
 import { SealUtil } from './utils/sealUtil';
@@ -116,9 +116,18 @@ export default class PerliteSyncPlugin extends Plugin {
                 item
                     .setTitle('pull')
                     .setIcon('book-down')
-                    .onClick(() => {
+                    .onClick(async () => {
                         try{
                             new Notice('pull from walrus');
+                            const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
+                            const vaultName = this.app.vault.getName();
+                            const files = this.app.vault.getMarkdownFiles();
+                            let vault = await init(vaultName, this.mnemonicWallet.getAddress(), this.mnemonicWallet);
+                            if(!vault){
+                                new Notice('pull failed, please init first');
+                                return;
+                            }
+                            pull(vault, vaultPath,files, this.mnemonicWallet, dataAdapter);
                             //const { downloadFile } = SealUtil(props);
                             //const blob_id = "hryIYynN-rKTDEfxKSGxlYX6UMjtS1ytmGN3f4aAMV8";
                             //downloadFile(blob_id, dataAdapter);

@@ -403,7 +403,7 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
     async function saveToLocal(adapter: DataAdapter, blob: Blob, fileName: string) {
         try {
             const path = require('path');
-            adapter.mkdir("download");
+            adapter.mkdir("download_test");
             // 确保输出目录存在
             const arrayBuffer = await blob.arrayBuffer();
             adapter.writeBinary(path.join("download", fileName), arrayBuffer);

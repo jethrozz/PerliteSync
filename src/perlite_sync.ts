@@ -1,4 +1,4 @@
-import { DataAdapter, TFile } from 'obsidian';
+import { DataAdapter, TFile, normalizePath } from 'obsidian';
 import { getPerliteVaultByAddress, PerliteVaultDir } from './server/perlite_server';
 import { PerliteVault } from './server/perlite_server';
 import { MnemonicWallet } from './mnemonic-wallet';
@@ -31,23 +31,20 @@ export async function init(vaultName: string, address: string, wallet: MnemonicW
         });
         const suiClient = new SuiClient({ url: getFullnodeUrl(NET_WORK) });
         try {
-            (async () => {
-                let txBytes = await tx.build({ client: suiClient });
-                // 
-                let signature = await wallet.signTransaction(txBytes);
-                suiClient.getOwnedObjects
-                let txResult = await suiClient.executeTransactionBlock({
-                    transactionBlock: txBytes,
-                    signature: signature,
-                });
-                console.log("txResult", txResult);
-                
-            })();
+            let txBytes = await tx.build({ client: suiClient });
+            // 
+            let signature = await wallet.signTransaction(txBytes);
+            suiClient.getOwnedObjects
+            let txResult = await suiClient.executeTransactionBlock({
+                transactionBlock: txBytes,
+                signature: signature,
+            });
+            console.log("txResult", txResult);
         } catch (e) {
             console.log("tx build error", e);
         }
         return await getPerliteVaultByAddress(address, vaultName);
-    }else{
+    } else {
         return vault;
     }
 }
@@ -70,26 +67,26 @@ export async function push(vault: PerliteVault, vaultLocalPath: string, allMarkd
         let tx = new Transaction();
         tx.setSender(address);
         //tx.setGasBudget(10000000);
-                        //上传文件
-                        let props = {
-                            vaultId: vaultId,
-                            moduleName: 'perlite_sync',
-                            wallet: this.mnemonicWallet
-                        };
+        //上传文件
+        let props = {
+            vaultId: vaultId,
+            moduleName: 'perlite_sync',
+            wallet: this.mnemonicWallet
+        };
         const { handleSubmit, displayUpload, handlePublish } = SealUtil(props);
-        
-        for(let j=0; j<allMarkdownFiles.length; j++){
+
+        for (let j = 0; j < allMarkdownFiles.length; j++) {
             let file = allMarkdownFiles[j];
             if (map.has(file.path)) {
                 //该文件已上传
                 console.log("has file", file.path);
             } else {
                 //该文件未上传
-                let currFilePathSplit = file.path.split("/");                
+                let currFilePathSplit = file.path.split("/");
                 let tempPath = "";
                 console.log("currFilePathSplit", currFilePathSplit);
                 let parentObjMap = new Map<string, any>();
-                
+
                 parentObjMap.set(currFilePathSplit[0], vaultId);
                 for (let i = 0; i < currFilePathSplit.length - 1; i++) {
                     let currDir = currFilePathSplit[i];
@@ -100,7 +97,7 @@ export async function push(vault: PerliteVault, vaultLocalPath: string, allMarkd
                     }
                     if (newDirMap.has(tempPath)) {
                         console.log("has dir", tempPath);
-                        parentObjMap.set(tempPath+"/"+currFilePathSplit[i+1], newDirMap.get(tempPath));
+                        parentObjMap.set(tempPath + "/" + currFilePathSplit[i + 1], newDirMap.get(tempPath));
                         continue;
                     }
 
@@ -113,7 +110,7 @@ export async function push(vault: PerliteVault, vaultLocalPath: string, allMarkd
                         arguments: [tx.pure.string(currDir), tx.object(parent), tx.object("0x6")],
                     });
                     newDirMap.set(tempPath, par);
-                    parentObjMap.set(tempPath+"/"+currFilePathSplit[i+1], par);
+                    parentObjMap.set(tempPath + "/" + currFilePathSplit[i + 1], par);
                     waitTransferDirs.push(par);
                 }
                 console.log("parentObjMap", parentObjMap);
@@ -132,7 +129,7 @@ export async function push(vault: PerliteVault, vaultLocalPath: string, allMarkd
                 if (result) {
                     console.log("文件上传成功:", sourcePath);
                     let fileResult = tx.moveCall({
-                        target: PACKAGE_ID+'::perlite_sync::new_file',
+                        target: PACKAGE_ID + '::perlite_sync::new_file',
                         arguments: [tx.pure.string(fileName), tx.pure.string(result.blobId), tx.pure.u64(result.endEpoch), tx.object(parent_dir), tx.object("0x6")],
                     });
                     waitTransferFiles.push(fileResult);
@@ -246,9 +243,51 @@ export async function pull(vault: PerliteVault, vaultLocalPath: string, allMarkd
     const props = {
         vaultId: vaultId,
         moduleName: 'perlite_sync',
-        wallet: this.mnemonicWallet
+        wallet: wallet
     };
+
     const { downloadFile } = SealUtil(props);
-    //循环遍历
-    // adapter.exists
+
+    const stack: Array<{ dir: PerliteVaultDir, visited: boolean }> = [];
+    stack.push({ dir: vault, visited: false });
+    const path_join: string[] = [];
+    while (stack.length > 0) {
+        const entry = stack.pop();
+        const currVault = entry?.dir;
+        if (currVault) {
+            if (!entry?.visited) {
+                // 首次访问：构建路径并处理文件
+                if (currVault !== vault) {
+                    path_join.push(currVault.name);
+                }
+                // 处理当前目录文件
+                for (const file of currVault.files) {
+                    const cur_path = [...path_join, file.title].join('/');
+                    console.log("check cur_path", cur_path);
+                    const exists = await adapter.exists(cur_path, true);
+                    // ... 文件处理逻辑保持不变 ...
+                    // ... 文件处理逻辑保持不变 ...
+                    if (!exists) {
+                        // 下载文件
+                        console.log("download file", file.title);
+                        await downloadFile(file, adapter);
+                    } else {
+                        console.log("file exists", file.title);
+                    }
+                }
+                // 将当前目录标记为已访问，准备后续弹出路径
+                stack.push({ dir: currVault, visited: true });
+
+                // 逆向插入子目录保证处理顺序
+                for (let i = currVault.directories.length - 1; i >= 0; i--) {
+                    stack.push({ dir: currVault.directories[i], visited: false });
+                }
+            } else {
+                // 二次访问：弹出目录路径
+                if (currVault !== vault) {
+                    path_join.pop();
+                }
+            }
+        }
+    }
 }

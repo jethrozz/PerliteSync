@@ -106,6 +106,9 @@ export async function getPerliteVaultByAddress(address: string, vaultName: strin
 
     // 3. 构建根目录（假设只有一个根目录）
     const rootDir = dirs.find(d => d.is_root && d.name == vaultName)!;
+    if(!rootDir){
+        return undefined;
+    }
     const dir = buildDirectory(rootDir.id);
     if(dir){
         return {
@@ -153,8 +156,6 @@ async function getUserOwnDirectory(address: string, graphqlUrl: string): Promise
         endCursor = currentPage.data?.address?.objects?.pageInfo?.endCursor;
         hasNextPage = currentPage.data?.address?.objects?.pageInfo?.hasNextPage;
     }while (hasNextPage);
-
-
     return result;
 }
 
