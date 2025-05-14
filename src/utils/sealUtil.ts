@@ -29,13 +29,13 @@ export type Data = {
 interface WalrusUploadProps {
     vaultId: string;
     moduleName: string;
+    packageId: string;
     wallet: MnemonicWallet;
 }
 
-export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
+export function SealUtil({ vaultId, moduleName, packageId, wallet}: WalrusUploadProps) {
     const SUI_VIEW_TX_URL = `https://suiscan.xyz/testnet/tx`;
     const SUI_VIEW_OBJECT_URL = `https://suiscan.xyz/testnet/object`;
-    const packageId = "0x4cb081457b1e098d566a277f605ba48410e26e66eaab5b3be4f6c560e9501800";
 
     const services: WalrusService[] = [
         {
@@ -89,7 +89,7 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
         return `${service?.publisherUrl.replace(/\/+$/, '')}/v1/${cleanPath}`;
     }
 
-    const handleSubmit = async (file: File): Promise<Data> => {
+    const handleSubmit = async (file: File, epoch: number): Promise<Data> => {
         if (!file) {
             throw new Error('No file selected');
         }
@@ -116,7 +116,7 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
                         id,
                         data: new Uint8Array(event.target.result),
                     });
-                    const storageInfo = await storeBlob(encryptedBytes);
+                    const storageInfo = await storeBlob(encryptedBytes, epoch);
                     if(storageInfo){
                         resolve(displayUpload(storageInfo.info, file.type));
                     }else{
@@ -130,7 +130,7 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
         });
     };
 
-    const storeBlob = async(encryptedData: Uint8Array) => {
+    const storeBlob = async(encryptedData: Uint8Array, epoch: number) => {
         let urls = ["https://publisher.walrus-testnet.walrus.space",
             "https://wal-publisher-testnet.staketab.org",
             "https://walrus-testnet-publisher.bartestnet.com",
@@ -156,7 +156,7 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
         for (let url of urls) {
             try{
                 console.log("try to store blob on", url);
-                const response = await fetch(url +"/v1/blobs?epochs=1", {
+                const response = await fetch(url +"/v1/blobs?epochs="+epoch, {
                     method: 'PUT',
                     body: encryptedData,
                 });
@@ -236,7 +236,7 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
         }
     }
 
-    async function downloadFile(file: PerliteFile, adapter: DataAdapter) {
+    async function downloadFile(file: PerliteFile, filePath: string, adapter: DataAdapter) {
         const TTL_MIN = 10;
         const sessionKey = new SessionKey({
             address: wallet.getAddress(),
@@ -264,10 +264,9 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
                 client,
                 moveCallConstructor
             );
-            console.log("blobs length", blobs.length);
             for(let i=0; i<blobs.length; i++){
                 const blob = blobs[i];
-                await saveToLocal(adapter, blob, file.title);
+                await saveToLocal(adapter, blob, filePath);
             }
         } catch (error: any) {
             console.error('Error:', error);
@@ -394,21 +393,20 @@ export function SealUtil({ vaultId, moduleName, wallet }: WalrusUploadProps) {
     function constructMoveCall(packageId: string, fileId: string): MoveCallConstructor {
         return (tx: Transaction, id: string) => {
             tx.moveCall({
-                target: `${packageId}::perlite_sync::seal_approve`,
+                target: PACKAGE_ID+`::perlite_sync::seal_approve`,
                 arguments: [tx.pure.vector('u8', fromHex(id)), tx.object(fileId)],
             });
         };
     }
 
-    async function saveToLocal(adapter: DataAdapter, blob: Blob, fileName: string) {
+    async function saveToLocal(adapter: DataAdapter, blob: Blob, filePath: string) {
         try {
             const path = require('path');
-            adapter.mkdir("download_test");
             // 确保输出目录存在
             const arrayBuffer = await blob.arrayBuffer();
-            adapter.writeBinary(path.join("download", fileName), arrayBuffer);
+            adapter.writeBinary(filePath, arrayBuffer);
 
-            console.log(`文件已保存到: ${path.join("download", fileName)}`);
+            console.log(`文件已保存到: ${filePath}`);
         } catch (error) {
             console.error('保存文件失败:', error);
             throw error;

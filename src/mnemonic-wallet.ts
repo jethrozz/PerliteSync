@@ -27,11 +27,8 @@ export class MnemonicWallet implements mnemoninWallet{
         this.keypair = keypair;
         // 获取私钥
         const privateKey = keypair.getSecretKey();
-        console.log('Private Key:', privateKey.toString());
-
         // 获取公钥
         const publicKey = keypair.getPublicKey();
-        console.log('Public Key:', publicKey.toSuiAddress());
         this.address = publicKey.toSuiAddress();
         this.privateKey = privateKey;
         this.publicKey = toBase64(publicKey.toRawBytes());
@@ -65,6 +62,14 @@ export class MnemonicWallet implements mnemoninWallet{
             signatureScheme,
             publicKey: pubkey,
         });
+    }
+
+    public destory(): void{
+        this.mnemonic = '';
+        this.address = '';
+        this.privateKey = '';
+        this.publicKey = '';
+        this.keypair = new Ed25519Keypair();
     }
 }
 

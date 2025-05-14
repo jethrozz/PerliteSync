@@ -9,27 +9,63 @@ import { PerliteVault } from './server/perlite_server';
 interface PerliteSyncSettings {
     passphrase: string;
     address: string;
+    epoch: number;
 }
 
 const DEFAULT_SETTINGS: PerliteSyncSettings = {
-    passphrase: 'table bar seat almost seven decrease nuclear series basket about render bless',
-    address: ''
+    passphrase: '',
+    address: '',
+    epoch: 10
 }
+
+export class ConfirmModal extends Modal {
+    text: string;
+    constructor(app: App, text: string) {
+      super(app);
+      this.app = app;
+      this.text = text;
+    }
+  
+    onOpen() {
+      const { contentEl } = this;
+      contentEl.setText(this.text+"\n");
+      contentEl.createDiv()
+      const confirmButton = contentEl.createEl('button');
+      confirmButton.innerText = '确定';
+      confirmButton.onclick = () => {
+        // 用户点击确定后的操作
+        this.close();
+      };
+  
+     /* const cancelButton = contentEl.createEl('button');
+      cancelButton.innerText = '取消';
+      cancelButton.onclick = () => {
+        // 用户点击取消后的操作
+        this.close();
+      };*/
+    }
+}
+
 
 export default class PerliteSyncPlugin extends Plugin {
     settings: PerliteSyncSettings;
     mnemonicWallet: MnemonicWallet;
     vault: PerliteVault | undefined;
+    epoch: number;
+    
+    
+    
     async onload() {
         await this.loadSettings();
         try {
+            this.app
             if (this.settings.passphrase === '') {
                 new Notice('请先配置perlite sync 插件');
             } else {
                 this.mnemonicWallet = new MnemonicWallet(this.settings.passphrase);
                 console.log(this.mnemonicWallet.getAddress());
             }
-
+            this.epoch = this.settings.epoch;
         } catch (error) {
             console.error("init mnemonic wallet failed");
         }
@@ -40,25 +76,16 @@ export default class PerliteSyncPlugin extends Plugin {
                 return;
             }
             let dataAdapter = this.app.vault.adapter;
-            let props = {
-                policyObject: '0x89dd28871bd4ef4c0428eb4a591e9215d744765dcaa037d6ae454b837ea085c5',
-                cap_id: '0x36dd69ef377b3ca0c86cf7106c40c3d4e6ba44d149844ea945b097cb5b8d5b2d',
-                moduleName: 'allowlist',
-                wallet: this.mnemonicWallet
-            };
             const menu = new Menu();
             menu.addItem((item) =>
                 item
                    .setTitle('init')
                    .setIcon('webhook')
                    .onClick( async () => {
-                        const allFiles = this.app.vault.getFiles();
-                        // console.log(this.app.vault.getRoot());
-                        // console.log(this.app.vault.getName());
-                        // console.log(this.app.vault.getMarkdownFiles());
-                        const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
+                        //const allFiles = this.app.vault.getFiles();
+                        //const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
                         const vaultName = this.app.vault.getName();
-                        this.vault = await init(vaultName, this.mnemonicWallet.getAddress(), this.mnemonicWallet);
+                        this.vault = await init(vaultName, this.getMnemonicWallet());
                         console.log("vault", this.vault);
                         if(this.vault){
                             new Notice('init success, vaultId:'+this.vault.id+'vaultName:'+this.vault.name);
@@ -76,36 +103,18 @@ export default class PerliteSyncPlugin extends Plugin {
                         try{
                             //const { handleSubmit, displayUpload, handlePublish } = SealUtil(props);
                             //上传文件
-                            const fs = require('fs');
-                            const path = require('path');
+                            //const fs = require('fs');
+                            //const path = require('path');
                             const files = this.app.vault.getMarkdownFiles();
     
                             //const outputDir = 'C:\\Users\\77658\\Documents\\testcopy_obsidian';
-                            const outputDir = '/Users/77658/Documents/testcopy_obsidian';
+                            //const outputDir = '/Users/77658/Documents/testcopy_obsidian';
                             const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
                             const vaultName = this.app.vault.getName();
-                            let vault = await init(vaultName, this.mnemonicWallet.getAddress(), this.mnemonicWallet);
+                            let vault = await init(vaultName, this.getMnemonicWallet());
                             if(vault){
-                                await push(vault, vaultPath, files, this.mnemonicWallet);
+                                await push(vault, vaultPath, files, this.getMnemonicWallet(), this.getEpoch(), this.newNotice.bind(this), this.app);
                             }
-                            // const sourcePath = path.join(vaultPath, files[0].path);
-                            // console.log("ready to submit", sourcePath); 
-                            // fs.readFile(sourcePath, async (err: any, data: any) => {
-                            //     if (err) {
-                            //         console.error("读取文件失败:", err);
-                            //         return;
-                            //     }
-                            //     const fileName = path.basename(sourcePath);
-                            //     let file = new File([data], fileName, {
-                            //         type: 'text/plain',
-                            //         lastModified: Date.now()
-                            //     });
-                            //     console.log("文件内容:", file);
-                            //     const result = await handleSubmit(file);
-                            //     //发布文件
-                            //     handlePublish(props.policyObject, result.blobId);
-                            //     new Notice(`成功发布 ${files.length} 个文件到合约`);
-                            // });
                         }catch(e){
                             console.log(e);
                         }
@@ -122,7 +131,7 @@ export default class PerliteSyncPlugin extends Plugin {
                             const vaultPath = (this.app.vault.adapter as FileSystemAdapter).getBasePath();
                             const vaultName = this.app.vault.getName();
                             const files = this.app.vault.getMarkdownFiles();
-                            let vault = await init(vaultName, this.mnemonicWallet.getAddress(), this.mnemonicWallet);
+                            let vault = await init(vaultName, this.getMnemonicWallet());
                             if(!vault){
                                 new Notice('pull failed, please init first');
                                 return;
@@ -145,7 +154,7 @@ export default class PerliteSyncPlugin extends Plugin {
 
         // This adds a status bar item to the bottom of the app. Does not work on mobile apps.
         const statusBarItemEl = this.addStatusBarItem();
-        statusBarItemEl.setText('Status Bar Text');
+        statusBarItemEl.setText('perlite sync status bar');
 
         // This adds a simple command that can be triggered anywhere
         this.addCommand({
@@ -197,8 +206,23 @@ export default class PerliteSyncPlugin extends Plugin {
         this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
     }
 
-    onunload() {
+    setEpoch(epoch: number) {
+        this.epoch = epoch;
     }
+    newNotice(message: string) {
+        new Notice(message);
+    }
+    getEpoch() {
+        return this.epoch;
+    }
+
+    getMnemonicWallet() {
+        return this.mnemonicWallet;
+    }
+    onunload() {
+        this.mnemonicWallet.destory();
+    }
+    
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -255,5 +279,23 @@ class PerliteSyncSettingTab extends PluginSettingTab {
                     this.plugin.settings.passphrase = value;
                     await this.plugin.saveSettings();
                 }));
+                new Setting(containerEl)
+                .setName('Epoch')
+                .setDesc('file storage on walrus epoch numbers')
+                .addText(text => text
+                    .setPlaceholder('Enter save Epoch number, default is 10')
+                    .setValue(this.plugin.settings.epoch.toString())
+                    .onChange(async (value) => {
+                        try {
+                            let tempEpoch = parseInt(value);
+                            if (tempEpoch>0) {
+                                this.plugin.settings.epoch = tempEpoch;
+                                await this.plugin.loadSettings();
+                                this.plugin.setEpoch(tempEpoch);
+                            }
+                        } catch (error) {
+                            console.error("Epoch value is not valid");
+                        }
+                    }));
     }
 }
