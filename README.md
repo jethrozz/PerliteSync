@@ -4,4 +4,4 @@
   - pull：将链上文件下载至本地
 
 还可以配合Perlite平台将个人知识进行售卖，实现知识的变现。
-详情请参考Perlite平台文档。
+详情请参考[Perlite平台](https://github.com/jethrozz/Perlite)文档。
