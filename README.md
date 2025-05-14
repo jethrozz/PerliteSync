@@ -1,5 +1,5 @@
 # PerliteSync
-这是一款Obsidian的同步插件，主要功能如下：
+这是一款[Obsidian本地笔记软件](https://obsidian.md/)的同步插件，主要功能如下：
   - push：将本地文件上传至链上进行私有化保存
   - pull：将链上文件下载至本地
 
