@@ -1,0 +1,11 @@
+{
+	"id": "perlite-sync",
+	"name": "Perlite Sync",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Sync your Obsidian notes to Sui Chain",
+	"author": "jethrozz",
+	"authorUrl": "https://github.com/jethrozz",
+	"fundingUrl": "https://github.com/jethrozz/PerliteSync",
+	"isDesktopOnly": false
+}
