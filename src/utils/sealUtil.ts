@@ -104,9 +104,9 @@ export function SealUtil({ vaultId, moduleName, packageId, wallet}: WalrusUpload
                     const suiClient = new SuiClient({ url: getFullnodeUrl('testnet') });
                     const client = new SealClient({
                         suiClient,
-                        serverObjectIds: getAllowlistedKeyServers('testnet'),
+                        serverObjectIds: getAllowlistedKeyServers('testnet').map(id => [id, 1] as [string, number]),
                         verifyKeyServers: false,
-                    });
+                      });
                     const nonce = crypto.getRandomValues(new Uint8Array(5));
                     const policyObjectBytes = fromHex(vaultId);
                     const id = toHex(new Uint8Array([...policyObjectBytes, ...nonce]));
@@ -248,9 +248,9 @@ export function SealUtil({ vaultId, moduleName, packageId, wallet}: WalrusUpload
             const suiClient = new SuiClient({ url: getFullnodeUrl('testnet') });
             const client = new SealClient({
                 suiClient,
-                serverObjectIds: getAllowlistedKeyServers('testnet'),
+                serverObjectIds: getAllowlistedKeyServers('testnet').map(id => [id, 1] as [string, number]),
                 verifyKeyServers: false,
-            });
+              });
             let message = sessionKey.getPersonalMessage();
             let signature = await wallet.signPersonalMessage(message);
             const moveCallConstructor = await constructMoveCall(packageId, file.id);
@@ -332,6 +332,7 @@ export function SealUtil({ vaultId, moduleName, packageId, wallet}: WalrusUpload
         // Filter out failed downloads
         const validDownloads = downloadResults.filter((result): result is ArrayBuffer => result !== null);
         console.log('validDownloads count', validDownloads.length);
+        console.log('validDownloads', validDownloads);
 
         if (validDownloads.length === 0) {
             const errorMsg =

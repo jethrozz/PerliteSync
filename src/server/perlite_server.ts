@@ -127,6 +127,7 @@ export async function getPerliteVaultByAddress(address: string, vaultName: strin
 async function getUserOwnDirectory(address: string, graphqlUrl: string): Promise<Array<Directory>> {
     const suiGraphQLClient = new SuiGraphQLClient({ url: graphqlUrl });
     const type = DIR_TYPE;
+    console.log("queryByAddressAndType", type);
     let endCursor: string | null | undefined = null;
     const result: Directory[] = [];
 

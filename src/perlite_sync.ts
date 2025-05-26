@@ -45,7 +45,10 @@ export async function init(vaultName: string, wallet: MnemonicWallet): Promise<P
         } catch (e) {
             console.log("tx build error", e);
         }
-        return await getPerliteVaultByAddress(address, vaultName);
+        vault= await getPerliteVaultByAddress(address, vaultName);
+        if(!vault){
+            return await getPerliteVaultByAddress(address, vaultName);
+        }
     } else {
         return vault;
     }
